@@ -90,3 +90,42 @@ jobs:
   `CARGO_PROFILE_DEV_DEBUG=0`・`CARGO_PROFILE_TEST_DEBUG=0`・
   `CARGO_INCREMENTAL=0` を渡す。
 - 秘密情報は渡さない（`secrets` は使わず、入力は `with` のみ）。
+
+## secret-gates.yml
+
+シークレットスキャンゲート。Betterleaks で Git 履歴全体を走査し、認証情報を
+検出すると失敗する。ローカルの pre-commit スキャンと併せ、CI を最終ゲート
+として使う。Rust 以外のリポジトリからも呼び出せる。
+
+呼び出し例:
+
+```yaml
+permissions:
+  contents: read
+
+concurrency:
+  group: secret-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    uses: Seduce0068/workflows/.github/workflows/secret-gates.yml@v1
+```
+
+### 入力
+
+| 名前 | 型 | 既定 | 説明 |
+| --- | --- | --- | --- |
+| `betterleaks_version` | string | `v1.10.1` | 導入する Betterleaks の v1 タグ |
+| `go_version` | string | `1.26` | `go install` に使う Go ツールチェーン |
+| `runner` | string | `ubuntu-24.04` | 実行するランナー |
+| `timeout_minutes` | number | `15` | ジョブのタイムアウト（分） |
+
+### 運用メモ
+
+- 判定は Betterleaks の出力に `no leaks found` があるかどうかで行う。
+  検出時に非ゼロを返さない版でも素通りしない。
+- バージョンは v1 タグに固定する。v2 は RC のため本番では使わない。
+- `self-test.yml` の `secret-gates` ジョブが、提供側リポジトリ自体を
+  スキャンして回帰テストする。
+- スキャナは全履歴を読むため、checkout では `fetch-depth: 0` を使う。
