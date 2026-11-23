@@ -40,3 +40,6 @@ jobs:
     with:
       working_directory: fixtures/hello
       audit: true
+
+  secret-gates:
+    uses: ./.github/workflows/secret-gates.yml
