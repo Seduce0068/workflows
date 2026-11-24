@@ -35,7 +35,7 @@ permissions:
 
 jobs:
   gates:
-    uses: onoderakeita/workflows/.github/workflows/rust-gates.yml@v1
+    uses: Seduce0068/workflows/.github/workflows/rust-gates.yml@v1
     with:
       apt_packages: |
         libwebkit2gtk-4.1-dev
@@ -123,8 +123,9 @@ jobs:
 
 ### 運用メモ
 
-- 判定は Betterleaks の出力に `no leaks found` があるかどうかで行う。
-  検出時に非ゼロを返さない版でも素通りしない。
+- 判定は Betterleaks の終了コードで行う。出力文字列の有無に依存しないため、
+  メッセージ変更や非ゼロを返さない版でも検出を取り逃さない。
+  ただし非ゼロを返さない版を使う場合は入力バージョンを固定して母体を検証する。
 - バージョンは v1 タグに固定する。v2 は RC のため本番では使わない。
 - `self-test.yml` の `secret-gates` ジョブが、提供側リポジトリ自体を
   スキャンして回帰テストする。

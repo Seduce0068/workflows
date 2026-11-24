@@ -3,7 +3,7 @@
 # ローカルの標準検証ループと同じ順序で実行する:
 #   fmt → check → test → clippy → 監査（任意）→ 追加ゲート
 # 呼び出し側からは次のように参照する:
-#   uses: onoderakeita/workflows/.github/workflows/rust-gates.yml@v1
+#   uses: Seduce0068/workflows/.github/workflows/rust-gates.yml@v1
 # 入力の一覧は README.md を参照。
 name: Rust gates
 
@@ -98,11 +98,18 @@ jobs:
           echo "$APT_PACKAGES" | xargs sudo apt-get install -y --no-install-recommends
 
       - name: Rust ツールチェーン
+        env:
+          RUST_TOOLCHAIN: ${{ inputs.rust_toolchain }}
         run: |
           set -euo pipefail
-          rustup toolchain install "${{ inputs.rust_toolchain }}" --profile minimal \
+          # 入力をシェルへ直接展開せず、env 経由で受け取って検証する。
+          if ! [[ "$RUST_TOOLCHAIN" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+            echo 'invalid rust_toolchain value' >&2
+            exit 1
+          fi
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal \
             --component rustfmt --component clippy
-          rustup default "${{ inputs.rust_toolchain }}"
+          rustup default "$RUST_TOOLCHAIN"
 
       - name: 追加ターゲット（wasm32 等）
         if: inputs.wasm_targets != ''
@@ -123,7 +130,15 @@ jobs:
           ENV_VARS: ${{ inputs.env_vars }}
         run: |
           set -euo pipefail
-          printf '%s\n' "$ENV_VARS" | sed '/^$/d' >> "$GITHUB_ENV"
+          # KEY=VALUE 行のみ許可し、改行・制御文字の混入を拒否する。
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            if ! [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:cntrl:]]*$ ]]; then
+              echo 'invalid env_vars line' >&2
+              exit 1
+            fi
+            printf '%s\n' "$line" >> "$GITHUB_ENV"
+          done <<< "$ENV_VARS"
 
       - name: 整形（fmt）
         working-directory: ${{ inputs.working_directory }}
